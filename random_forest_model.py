@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+def header(title):
+    print(f"\n{'=' * 60}\n{title.center(60)}\n{'=' * 60}")
+
+def load_and_process_data(file_path, target_col='popularity'):
+    df = pd.read_csv(file_path, index_col=0)
+
+    columns_to_drop = ['track_id', 'track_name', 'album_name']
+    df = df.drop(columns=columns_to_drop).dropna()
+
+    if 'explicit' in df.columns:
+        df['explicit'] = df['explicit'].astype(int)
+
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype('category').cat.codes
+
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+
+    return train_test_split(X, y, test_size=0.2, random_state=42)
+
+def train_evaluate(X_train, X_test, y_train, y_test):
+    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    rf.fit(X_train, y_train)
+
+    preds = rf.predict(X_test)
+
+    rmse = np.sqrt(mean_squared_error(y_test, preds))
+    mae = mean_absolute_error(y_test, preds)
+    r2 = r2_score(y_test, preds)
+
+    header("TEST RESULTS")
+    print(f"- RMSE (Root Mean Sq. Error): {rmse:>10.4f}")
+    print(f"- MAE  (Mean Absolute Error): {mae:>10.4f}")
+    print(f"- R2   (R-Squared Score):     {r2:>10.4f}")
+
+    header("TOP 10 FEATURE IMPORTANCE")
+    importances = rf.feature_importances_
+    indices = np.argsort(importances)[::-1][:10]
+
+    for i in indices:
+        feat_name = X_train.columns[i]
+        score = importances[i]
+        bar_len = int(score * 30)
+        bar = '█' * bar_len
+        print(f"{feat_name:<20} | {bar:<30} {score:.4f}")
+
+def main():
+    X_train, X_test, y_train, y_test = load_and_process_data('dataset.csv')
+    train_evaluate(X_train, X_test, y_train, y_test)
+
+if __name__ == "__main__":
+    main()
