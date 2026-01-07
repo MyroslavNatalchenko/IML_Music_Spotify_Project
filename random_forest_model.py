@@ -1,23 +1,17 @@
+import os
+import joblib
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.preprocessing import LabelEncoder
 
 def header(title):
     print(f"\n{'=' * 60}\n{title.center(60)}\n{'=' * 60}")
 
-def load_and_process_data(file_path, target_col='popularity'):
-    df = pd.read_csv(file_path, index_col=0)
-
-    columns_to_drop = ['track_id', 'track_name', 'album_name']
-    df = df.drop(columns=columns_to_drop).dropna()
-
-    if 'explicit' in df.columns:
-        df['explicit'] = df['explicit'].astype(int)
-
-    for col in df.select_dtypes(include=['object']).columns:
-        df[col] = df[col].astype('category').cat.codes
+def load_data(file_path, target_col='popularity'):
+    df = pd.read_csv(file_path)
 
     X = df.drop(columns=[target_col])
     y = df[target_col]
@@ -50,9 +44,12 @@ def train_evaluate(X_train, X_test, y_train, y_test):
         bar = '█' * bar_len
         print(f"{feat_name:<20} | {bar:<30} {score:.4f}")
 
+    return rf
+
 def main():
-    X_train, X_test, y_train, y_test = load_and_process_data('dataset.csv')
-    train_evaluate(X_train, X_test, y_train, y_test)
+    X_train, X_test, y_train, y_test = load_data('models/train_data.csv')
+    model = train_evaluate(X_train, X_test, y_train, y_test)
+    joblib.dump(model, 'models/rf_model.joblib')
 
 if __name__ == "__main__":
     main()
