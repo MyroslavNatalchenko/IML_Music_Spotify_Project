@@ -21,8 +21,8 @@ def process_and_save():
         "feature_names": feature_names
     }
 
-    joblib.dump(preprocessor_data, 'models/metadata.joblib')
-    df.to_csv('models/train_data.csv', index=False)
+    joblib.dump(preprocessor_data, '../models/metadata.joblib')
+    df.to_csv('../models/train_data.csv', index=False)
 
     print(f"\t- Features count: {len(feature_names)}")
     print(f"\t- Genres found: {len(unique_genres)}")

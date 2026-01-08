@@ -1,7 +1,7 @@
 import joblib
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
@@ -16,9 +16,37 @@ def load_data(file_path, target_col='popularity'):
 
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
+def tune_model(X_train, y_train):
+    header("HYPERPARAMETER TUNING")
+
+    search_params = {
+        'n_estimators': [100, 200, 300, 500],
+        'max_depth': [None, 10, 20, 30, 50],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'max_features': ['sqrt', 'log2', None]
+    }
+
+    rf = RandomForestRegressor(random_state=42, n_jobs=-1)
+
+    search = RandomizedSearchCV(
+        estimator=rf,
+        param_distributions=search_params,
+        n_iter=20,
+        cv=3,
+        verbose=1,
+        random_state=42,
+        n_jobs=-1,
+        scoring='neg_mean_squared_error'
+    )
+
+    search.fit(X_train, y_train)
+
+    print(f"Best Parameters: \n{search.best_params_}")
+    return search.best_estimator_
+
 def train_evaluate(X_train, X_test, y_train, y_test):
-    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-    rf.fit(X_train, y_train)
+    rf = tune_model(X_train, y_train)
 
     preds = rf.predict(X_test)
 
@@ -45,9 +73,9 @@ def train_evaluate(X_train, X_test, y_train, y_test):
     return rf
 
 def main():
-    X_train, X_test, y_train, y_test = load_data('models/train_data.csv')
+    X_train, X_test, y_train, y_test = load_data('../models/train_data.csv')
     model = train_evaluate(X_train, X_test, y_train, y_test)
-    joblib.dump(model, 'models/rf_model.joblib')
+    joblib.dump(model, '../models/rf_model.joblib')
 
 if __name__ == "__main__":
     main()
