@@ -29,7 +29,6 @@ if not data:
     st.error("❌ Backend is offline. Run 'uvicorn main:app --reload' in backend folder.")
     st.stop()
 
-artists_list = data["lists"]["artists"]
 genres_list = data["lists"]["genres"]
 available_models = data["models"]
 
@@ -39,12 +38,15 @@ with input_col:
     st.subheader("🛠 Track Parameters")
     with st.form("main_form"):
         st.markdown("##### 1. General Info")
-        c1, c2 = st.columns(2)
+
+        c1, c2, c3 = st.columns(3)
         with c1:
-            artist = st.selectbox("Artist", options=artists_list)
-            duration_ms = st.number_input("Duration (ms)", value=200000, step=50000)
-        with c2:
             genre = st.selectbox("Genre", options=genres_list)
+        with c2:
+            duration_ms = st.number_input("Duration (ms)", value=200000, step=5000)
+        with c3:
+            st.write("")
+            st.write("")
             explicit = st.checkbox("Explicit Content?", value=False)
 
         st.divider()
@@ -93,11 +95,20 @@ with result_col:
         placeholder.info("👈 Configure and click Predict")
     else:
         payload = {
-            "artists": artist, "track_genre": genre, "duration_ms": duration_ms,
-            "explicit": explicit, "danceability": danceability, "energy": energy,
-            "key": key, "loudness": loudness, "mode": mode, "speechiness": speechiness,
-            "acousticness": acousticness, "instrumentalness": instrumentalness,
-            "liveness": liveness, "valence": valence, "tempo": tempo,
+            "track_genre": genre,
+            "duration_ms": duration_ms,
+            "explicit": explicit,
+            "danceability": danceability,
+            "energy": energy,
+            "key": key,
+            "loudness": loudness,
+            "mode": mode,
+            "speechiness": speechiness,
+            "acousticness": acousticness,
+            "instrumentalness": instrumentalness,
+            "liveness": liveness,
+            "valence": valence,
+            "tempo": tempo,
             "time_signature": time_signature
         }
 
@@ -124,6 +135,7 @@ with result_col:
                 if results_to_display:
                     for m_name, score in results_to_display.items():
                         clean_name = m_name.replace("_model", "").replace("_", " ").title()
+
                         with st.container(border=True):
                             st.write(f"**{clean_name}**")
                             if score is not None:

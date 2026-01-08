@@ -2,35 +2,44 @@ from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+import numpy as np
 import os
 import glob
+import tensorflow as tf
 
-app = FastAPI(
-    title="ML Model Serving API",
-    description="API for accessing multiple ML models via separate endpoints",
-    version="2.0"
-)
+app = FastAPI(title="Spotify Predictor API", version="1.0")
 
 METADATA_PATH = "../models/metadata.joblib"
 
-if not os.path.exists(METADATA_PATH):
-    raise RuntimeError("No metadata file found.")
-
 meta = joblib.load(METADATA_PATH)
-encoders = meta["encoders"]
 feature_names = meta["feature_names"]
-dropdown_lists = meta["metadata_lists"]
+genre_list = meta["genre_list"]
 
 models = {}
-model_files = glob.glob("../models/*_model.joblib")
+model_files = glob.glob("../models/*_model.joblib") + glob.glob("../models/*_model.keras")
 
 for path in model_files:
-    filename = os.path.basename(path).replace(".joblib", "")
-    models[filename] = joblib.load(path)
-    print(f"\t --- Loaded models: {filename}")
+    filename = os.path.basename(path)
+    model_name = filename.split('.')[0]
+
+    if filename.endswith(".joblib"):
+        models[model_name] = {"model": joblib.load(path), "type": "sklearn"}
+        print(f"\t -- Loaded Sklearn: {model_name}")
+    elif filename.endswith(".keras"):
+        models[model_name] = {"model": tf.keras.models.load_model(path), "type": "tensorflow"}
+        print(f"\t -- Loaded TF: {model_name}")
+
+def get_prediction(model_entry, df_input):
+    model = model_entry["model"]
+    m_type = model_entry["type"]
+
+    if m_type == "sklearn":
+        return float(model.predict(df_input)[0])
+    elif m_type == "tensorflow":
+        pred = model.predict(df_input.values.astype(np.float32), verbose=0)[0][0]
+        return float(pred * 100.0)
 
 class TrackFeatures(BaseModel):
-    artists: str
     track_genre: str
     duration_ms: int
     explicit: bool
@@ -50,32 +59,30 @@ class TrackFeatures(BaseModel):
 def prepare_input(features: TrackFeatures) -> pd.DataFrame:
     data = features.dict()
 
-    try:
-        artist_code = encoders["artists"].transform([data["artists"]])[0]
-    except ValueError:
-        artist_code = 0
+    df_input = pd.DataFrame(0, index=[0], columns=feature_names)
 
-    try:
-        genre_code = encoders["track_genre"].transform([data["track_genre"]])[0]
-    except ValueError:
-        genre_code = 0
+    numeric_cols = [
+        'duration_ms', 'explicit', 'danceability', 'energy', 'key',
+        'loudness', 'mode', 'speechiness', 'acousticness',
+        'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature'
+    ]
 
-    data["artists"] = artist_code
-    data["track_genre"] = genre_code
-    data["explicit"] = int(data["explicit"])
+    for col in numeric_cols:
+        if col in df_input.columns:
+            df_input.at[0, col] = data[col]
 
-    try:
-        df_input = pd.DataFrame([data])
-        df_input = df_input[feature_names]
-        return df_input
-    except KeyError as e:
-        raise HTTPException(status_code=400, detail=f"Missing feature: {e}")
+    df_input.at[0, 'explicit'] = int(data['explicit'])
+
+    target_col = f"genre_{data['track_genre']}"
+    if target_col in df_input.columns:
+        df_input.at[0, target_col] = 1
+
+    return df_input
 
 @app.get("/meta/info")
 def get_metadata():
     return {
-        "artists": dropdown_lists["artists"],
-        "genres": dropdown_lists["track_genre"]
+        "genres": genre_list
     }
 
 @app.get("/models")
@@ -83,35 +90,24 @@ def list_models():
     return {"models": list(models.keys())}
 
 @app.post("/models/all/predict")
-def predict_all_models(features: TrackFeatures):
-    df_input = prepare_input(features)
-    results = {}
-
-    for name, model in models.items():
+def predict_all(features: TrackFeatures):
+    df = prepare_input(features)
+    res = {}
+    for name, entry in models.items():
         try:
-            pred = model.predict(df_input)[0]
-            results[name] = max(0, min(100, float(pred)))
+            val = get_prediction(entry, df)
+            res[name] = max(0, min(100, val))
         except Exception:
-            results[name] = None
-
-    return results
+            res[name] = None
+    return res
 
 @app.post("/models/{model_name}/predict")
-def predict_specific_model(
-        features: TrackFeatures,
-        model_name: str = Path(..., description="The name of the model to use")):
+def predict_one(features: TrackFeatures, model_name: str = Path(...)):
     if model_name not in models:
-        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not found")
-
-    df_input = prepare_input(features)
-    model = models[model_name]
-
+        raise HTTPException(404, "Model not found")
+    df = prepare_input(features)
     try:
-        pred = model.predict(df_input)[0]
-        score = max(0, min(100, float(pred)))
-        return {
-            "model": model_name,
-            "popularity_score": score
-        }
+        val = get_prediction(models[model_name], df)
+        return {"model": model_name, "popularity_score": max(0, min(100, val))}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(500, str(e))
