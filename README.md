@@ -42,31 +42,45 @@ instrumentalness     | █                              0.0473
 ### Tensorflow Model
 ```
 ============================================================
-               BEST HYPERPARAMETERS DETAILED
+               BEST HYPERPARAMETERS DETAILED                
 ============================================================
-Learning Rate:       0.0005
-Num Layers:          3.0000
+Learning Rate:     0.0005
+Num Layers:        2.0000
 
 	[Layer 1 INFORMATION]
-Units:             192.0000
-Dropout Enabled:      FALSE
-Batch Norm:           FALSE
+Units:              64.0000
+Dropout Enabled:     0.0000
+Batch Norm:          1.0000
 
 	[Layer 2 INFORMATION]
-Units:             224.0000
-Dropout Enabled:       TRUE
-Dropout Rate:        0.2000
-Batch Norm:           FALSE
-
-	[Layer 3 INFORMATION]
-Units:             192.0000
-Dropout Enabled:      FALSE
-Batch Norm:           FALSE
+Units:              96.0000
+Dropout Enabled:     1.0000
+Dropout Rate:        0.1000
+Batch Norm:          1.0000
 
 ============================================================
-                        TEST RESULTS
+                        TEST RESULTS                        
 ============================================================
-- RMSE (Root Mean Sq. Error):    18.0908
-- MAE  (Mean Absolute Error):    12.4269
-- R2   (R-Squared Score):         0.3368
+- RMSE (Root Mean Sq. Error):    19.1617
+- MAE  (Mean Absolute Error):    14.1879
+- R2   (R-Squared Score):         0.2560
+```
+
+### XGBoost
+```
+============================================================
+                    BEST HYPERPARAMETERS                    
+============================================================
+- n_estimators: 504 
+- max_depth: 10 
+- learning_rate: 0.09247260686862264 
+- subsample: 0.886456400096244 
+- colsample_bytree: 0.9073751570616455
+
+============================================================
+                        TEST RESULTS                        
+============================================================
+- RMSE (Root Mean Sq. Error):    16.0190
+- MAE  (Mean Absolute Error):    10.9180
+- R2   (R-Squared Score):         0.4800
 ```

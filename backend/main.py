@@ -6,6 +6,7 @@ import numpy as np
 import os
 import glob
 import tensorflow as tf
+import xgboost as xgb
 
 app = FastAPI(title="Spotify Predictor API", version="1.0")
 
@@ -24,7 +25,7 @@ for path in model_files:
 
     if filename.endswith(".joblib"):
         models[model_name] = {"model": joblib.load(path), "type": "sklearn"}
-        print(f"\t -- Loaded Sklearn: {model_name}")
+        print(f"\t -- Loaded Sklearn/XGB: {model_name}")
     elif filename.endswith(".keras"):
         models[model_name] = {"model": tf.keras.models.load_model(path), "type": "tensorflow"}
         print(f"\t -- Loaded TF: {model_name}")
@@ -59,7 +60,7 @@ class TrackFeatures(BaseModel):
 def prepare_input(features: TrackFeatures) -> pd.DataFrame:
     data = features.dict()
 
-    df_input = pd.DataFrame(0, index=[0], columns=feature_names)
+    df_input = pd.DataFrame(0.0, index=[0], columns=feature_names)
 
     numeric_cols = [
         'duration_ms', 'explicit', 'danceability', 'energy', 'key',
@@ -69,13 +70,13 @@ def prepare_input(features: TrackFeatures) -> pd.DataFrame:
 
     for col in numeric_cols:
         if col in df_input.columns:
-            df_input.at[0, col] = data[col]
+            df_input.at[0, col] = float(data[col])
 
-    df_input.at[0, 'explicit'] = int(data['explicit'])
+    df_input.at[0, 'explicit'] = float(data['explicit'])
 
     target_col = f"genre_{data['track_genre']}"
     if target_col in df_input.columns:
-        df_input.at[0, target_col] = 1
+        df_input.at[0, target_col] = 1.0
 
     return df_input
 
@@ -97,7 +98,8 @@ def predict_all(features: TrackFeatures):
         try:
             val = get_prediction(entry, df)
             res[name] = max(0, min(100, val))
-        except Exception:
+        except Exception as e:
+            print(f"Error predicting {name}: {e}")
             res[name] = None
     return res
 
