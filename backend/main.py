@@ -7,6 +7,7 @@ import os
 import glob
 import tensorflow as tf
 import xgboost as xgb
+from tabnet_keras import TabNetRegressor, feature_transformer
 
 app = FastAPI(title="Spotify Predictor API", version="1.0")
 
@@ -19,6 +20,11 @@ genre_list = meta["genre_list"]
 models = {}
 model_files = glob.glob("../models/*_model.joblib") + glob.glob("../models/*_model.keras")
 
+tabnet_custom_objects = {
+    "TabNetRegressor": TabNetRegressor,
+    "FeatureTransformer": feature_transformer.FeatureTransformer
+}
+
 for path in model_files:
     filename = os.path.basename(path)
     model_name = filename.split('.')[0]
@@ -27,8 +33,16 @@ for path in model_files:
         models[model_name] = {"model": joblib.load(path), "type": "sklearn"}
         print(f"\t -- Loaded Sklearn/XGB: {model_name}")
     elif filename.endswith(".keras"):
-        models[model_name] = {"model": tf.keras.models.load_model(path), "type": "tensorflow"}
-        print(f"\t -- Loaded TF: {model_name}")
+        if "tabnet" in filename.lower():
+            try:
+                model = tf.keras.models.load_model(path, custom_objects=tabnet_custom_objects)
+                models[model_name] = {"model": model, "type": "tabnet"}
+                print(f"\t -- Loaded TabNet: {model_name}")
+            except Exception as e:
+                print(f"\t !! Failed to load TabNet {model_name}: {e}")
+        else:
+            models[model_name] = {"model": tf.keras.models.load_model(path), "type": "tensorflow"}
+            print(f"\t -- Loaded TF: {model_name}")
 
 def get_prediction(model_entry, df_input):
     model = model_entry["model"]
@@ -39,6 +53,9 @@ def get_prediction(model_entry, df_input):
     elif m_type == "tensorflow":
         pred = model.predict(df_input.values.astype(np.float32), verbose=0)[0][0]
         return float(pred * 100.0)
+    elif m_type == "tabnet":
+        pred = model.predict(df_input.values.astype(np.float32), verbose=0)[0][0]
+        return float(pred)
 
 class TrackFeatures(BaseModel):
     track_genre: str
