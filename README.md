@@ -1,6 +1,10 @@
 # IML_Music_Spotify_Project
 Project for IML subject in PJAIT
 
+# Znowu bug w tensorflow
+- W ```.../lib/python3.10/site-packages/tabnet_keras/feature_transformer.py```  jakiegoś dziwnego powodu nie działa poprawnie wyliczenie pierwiastka kwadratowego z liczby 0.5
+- Rozwiązanie: trzeba zamienić ```self.norm_factor = tf.math.sqrt(tf.constant(0.5))``` na ```self.norm_factor = math.sqrt(0.5)```
+
 # Dataset
 [Spotify Track Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset/data)
 
@@ -83,4 +87,29 @@ Batch Norm:          1.0000
 - RMSE (Root Mean Sq. Error):    16.0190
 - MAE  (Mean Absolute Error):    10.9180
 - R2   (R-Squared Score):         0.4800
+```
+
+### Tabnet model
+```
+============================================================
+                        TEST RESULTS                        
+============================================================
+- RMSE (Root Mean Sq. Error):    18.9390
+- MAE  (Mean Absolute Error):    13.9133
+- R2   (R-Squared Score):         0.2732
+
+{
+    "decision_dim": 64,
+    "attention_dim": 64,  
+    "n_steps": 5,
+    "n_shared_glus": 2,
+    "n_dependent_glus": 2,
+    "relaxation_factor": 1.5,  
+    "epsilon": 1e-15,
+    "momentum": 0.98,
+    "mask_type": "sparsemax", 
+    "lambda_sparse": 1e-4,
+    "batch_size": 512,
+    "epochs": 50
+}
 ```

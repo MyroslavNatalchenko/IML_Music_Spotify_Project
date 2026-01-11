@@ -12,18 +12,32 @@ from tabnet_keras import TabNetRegressor, feature_transformer
 app = FastAPI(title="Spotify Predictor API", version="1.0")
 
 METADATA_PATH = "../models/metadata.joblib"
+SCALER_PATH = "../models/tabnet_scaler.joblib"
 
 meta = joblib.load(METADATA_PATH)
 feature_names = meta["feature_names"]
 genre_list = meta["genre_list"]
 
-models = {}
-model_files = glob.glob("../models/*_model.joblib") + glob.glob("../models/*_model.keras")
-
+tabnet_scaler = joblib.load(SCALER_PATH)
+TABNET_PARAMS = {
+    "decision_dim": 64,
+    "attention_dim": 64,
+    "n_steps": 5,
+    "n_shared_glus": 2,
+    "n_dependent_glus": 2,
+    "relaxation_factor": 1.5,
+    "epsilon": 1e-15,
+    "momentum": 0.98,
+    "mask_type": "sparsemax",
+    "lambda_sparse": 1e-4,
+}
 tabnet_custom_objects = {
     "TabNetRegressor": TabNetRegressor,
     "FeatureTransformer": feature_transformer.FeatureTransformer
 }
+
+models = {}
+model_files = glob.glob("../models/*_model.joblib") + glob.glob("../models/*_model.keras")
 
 for path in model_files:
     filename = os.path.basename(path)
@@ -35,14 +49,22 @@ for path in model_files:
     elif filename.endswith(".keras"):
         if "tabnet" in filename.lower():
             try:
-                model = tf.keras.models.load_model(path, custom_objects=tabnet_custom_objects)
+                print(f"\t .. Attempting to reconstruct TabNet: {model_name}")
+                model = TabNetRegressor(n_regressors=1, **TABNET_PARAMS)
+                dummy_input = tf.zeros((1, len(feature_names)))
+                _ = model(dummy_input)
+                model.load_weights(path)
                 models[model_name] = {"model": model, "type": "tabnet"}
-                print(f"\t -- Loaded TabNet: {model_name}")
+                print(f"\t -- Loaded TabNet (Weights Only): {model_name}")
             except Exception as e:
                 print(f"\t !! Failed to load TabNet {model_name}: {e}")
         else:
-            models[model_name] = {"model": tf.keras.models.load_model(path), "type": "tensorflow"}
-            print(f"\t -- Loaded TF: {model_name}")
+            try:
+                model = tf.keras.models.load_model(path)
+                models[model_name] = {"model": model, "type": "tensorflow"}
+                print(f"\t -- Loaded TF: {model_name}")
+            except Exception as e:
+                print(f"\t !! Failed to load TF {model_name}: {e}")
 
 def get_prediction(model_entry, df_input):
     model = model_entry["model"]
@@ -50,12 +72,15 @@ def get_prediction(model_entry, df_input):
 
     if m_type == "sklearn":
         return float(model.predict(df_input)[0])
+
     elif m_type == "tensorflow":
         pred = model.predict(df_input.values.astype(np.float32), verbose=0)[0][0]
         return float(pred * 100.0)
+
     elif m_type == "tabnet":
-        pred = model.predict(df_input.values.astype(np.float32), verbose=0)[0][0]
-        return float(pred)
+        X_input = tabnet_scaler.transform(df_input)
+        pred = model.predict(X_input, verbose=0)[0][0]
+        return float(pred * 100.0)
 
 class TrackFeatures(BaseModel):
     track_genre: str
