@@ -22,13 +22,13 @@ tabnet_scaler = joblib.load(SCALER_PATH)
 TABNET_PARAMS = {
     "decision_dim": 64,
     "attention_dim": 64,
-    "n_steps": 5,
+    "n_steps": 8,
     "n_shared_glus": 2,
     "n_dependent_glus": 2,
     "relaxation_factor": 1.5,
     "epsilon": 1e-15,
     "momentum": 0.98,
-    "mask_type": "sparsemax",
+    "mask_type": "softmax",
     "lambda_sparse": 1e-4,
 }
 tabnet_custom_objects = {

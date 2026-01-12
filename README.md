@@ -1,14 +1,95 @@
 # IML_Music_Spotify_Project
 Project for IML subject in PJAIT
 
-# Znowu bug w tensorflow
-- W ```.../lib/python3.10/site-packages/tabnet_keras/feature_transformer.py```  jakiegoś dziwnego powodu nie działa poprawnie wyliczenie pierwiastka kwadratowego z liczby 0.5
-- Rozwiązanie: trzeba zamienić ```self.norm_factor = tf.math.sqrt(tf.constant(0.5))``` na ```self.norm_factor = math.sqrt(0.5)```
+This project implements a Machine Learning pipeline to predict the popularity of Spotify tracks based on their audio features (acousticness, danceability, energy, etc.). It features Backend API serving multiple trained models and Frontend dashboard for interactive predictions and analysis.
 
-# Dataset
-[Spotify Track Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset/data)
+## 📋 Table of Contents
+- [Project Overview](#project-overview)
+- [Project Demonstration](#project-demonstration)
+- [Dataset](#dataset)
+- [Usage](#usage)
+- [Model Results](#model-results)
+  - [Benchmarks](#benchmarks)
+  - [Random Forest](#random-forest-results)
+  - [Tensorflow Model](#tensorflow-model)
+  - [XGBoost](#xgboost)
+  - [TabNet Model](#tabnet-model)
+- [Known Issues & Fixes](#bug-in-tabnet_keras-tensorflow-library)
 
-# Model Results
+---
+
+## Project Overview
+
+The goal of this application is to determine if a song has the potential to be a "hit" (popularity score) based on its metadata. 
+
+**Key Features:**
+- **Multiple Models:** Comparison between Random Forest, XGBoost, TensorFlow (MLP), and TabNet.
+- **Backend:** FastAPI service that loads pre-trained models and handles prediction requests.
+- **Frontend:** Streamlit application allowing users to tweak audio parameters (Mood, Vibe) and see real-time predictions.
+- **Analysis:** Visualizations of feature importance and model performance comparisons.
+
+---
+
+## Project Demonstration
+
+Here is how the application looks and functions:
+
+### 1. Interactive Prediction Dashboard
+Users can fine-tune specific audio features (like Danceability, Energy, Loudness) to see how they affect the predicted popularity score across different models.
+
+![Frontend Menu](documentation_imgs/fine_tuned_audio_features_menu.png)
+
+### 2. Prediction Results
+Comparison of prediction scores from all trained models for the given input.
+
+![Prediction Results](documentation_imgs/prediction_results_view.png)
+
+---
+
+## Dataset
+The models were trained using the **Spotify Tracks Dataset** available on Kaggle:
+[Link to Spotify Track Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset/data)
+
+---
+
+### Usage
+- Python 3.10+
+
+### 1. Run the Backend
+Navigate to the `backend` directory and start the FastAPI server:
+```bash
+cd backend
+uvicorn main:app --reload
+
+```
+
+The API will be available at `http://127.0.0.1:8000`.
+
+### 2. Run the Frontend
+
+Open a new terminal, navigate to the `frontend` directory and start Streamlit:
+
+```bash
+cd frontend
+streamlit run app.py
+
+```
+
+The interface will open in your browser at `http://localhost:8501`.
+
+---
+
+## Model Results
+
+We evaluated four different architectures. Below are the visual benchmarks and detailed statistics.
+![Benchmark](documentation_imgs/model_perfomance_benchmark.png)
+![Feature Importance](documentation_imgs/feature_importance.png)
+
+
+### Benchmarks
+
+Overview of RMSE, MAE, and R2 scores across all models, and Feature Importance analysis.
+
 ### Random Forest Results
 ```
 ============================================================
@@ -94,22 +175,28 @@ Batch Norm:          1.0000
 ============================================================
                         TEST RESULTS                        
 ============================================================
-- RMSE (Root Mean Sq. Error):    18.9390
-- MAE  (Mean Absolute Error):    13.9133
-- R2   (R-Squared Score):         0.2732
+- RMSE (Root Mean Sq. Error):    18.4580
+- MAE  (Mean Absolute Error):    13.1880
+- R2   (R-Squared Score):         0.3096
 
 {
     "decision_dim": 64,
-    "attention_dim": 64,  
-    "n_steps": 5,
+    "attention_dim": 64,
+    "n_steps": 8,
     "n_shared_glus": 2,
     "n_dependent_glus": 2,
-    "relaxation_factor": 1.5,  
+    "relaxation_factor": 1.5,
     "epsilon": 1e-15,
     "momentum": 0.98,
-    "mask_type": "sparsemax", 
+    "mask_type": "softmax",
     "lambda_sparse": 1e-4,
     "batch_size": 512,
     "epochs": 50
 }
 ```
+
+---
+
+# Bug in TabNet_keras tensorflow library
+- W ```.../lib/python3.10/site-packages/tabnet_keras/feature_transformer.py```  jakiegoś dziwnego powodu nie działa poprawnie wyliczenie pierwiastka kwadratowego z liczby 0.5
+- Rozwiązanie: trzeba zamienić ```self.norm_factor = tf.math.sqrt(tf.constant(0.5))``` na ```self.norm_factor = math.sqrt(0.5)```

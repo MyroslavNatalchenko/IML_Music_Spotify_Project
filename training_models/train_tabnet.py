@@ -28,13 +28,13 @@ def train_evaluate(X_train, X_test, y_train, y_test):
     tabnet_params = {
         "decision_dim": 64,
         "attention_dim": 64,
-        "n_steps": 5,
+        "n_steps": 8,
         "n_shared_glus": 2,
         "n_dependent_glus": 2,
         "relaxation_factor": 1.5,
         "epsilon": 1e-15,
         "momentum": 0.98,
-        "mask_type": "sparsemax",
+        "mask_type": "softmax",
         "lambda_sparse": 1e-4,
     }
 
@@ -51,7 +51,7 @@ def train_evaluate(X_train, X_test, y_train, y_test):
 
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',
-        patience=20,  # Увеличили терпение
+        patience=20,
         restore_best_weights=True
     )
 

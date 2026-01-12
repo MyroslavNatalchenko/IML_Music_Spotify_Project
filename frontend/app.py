@@ -20,8 +20,8 @@ MODEL_STATS = {
         "Params": {"layers": 2, "layer_1": "64 units", "layer_2": "96 units (dropout 0.1)", "lr": 0.0005}
     },
     "TabNet": {
-        "RMSE": 18.9390, "MAE": 13.9133, "R2": 0.2732,
-        "Params": {"decision_dim": 64, "n_steps": 5, "mask_type": "sparsemax", "batch_size": 512}
+        "RMSE": 18.4580, "MAE": 13.1880, "R2": 0.3096,
+        "Params": {"decision_dim": 64, "n_steps": 8, "mask_type": "softmax", "batch_size": 512}
     }
 }
 
@@ -113,7 +113,7 @@ with tab_predict:
             selected_model = st.selectbox("Select Model", available_models, label_visibility="collapsed")
 
         st.write("")
-        run_pred = st.button("🚀 PREDICT", type="primary", use_container_width=True)
+        run_pred = st.button("🚀 PREDICT", type="primary", width="stretch")
 
     with col_res:
         st.markdown("##### Results")
@@ -177,7 +177,7 @@ with tab_stats:
         title="Metric Comparison (RMSE/MAE: Lower is better, R2: Higher is better)",
         text_auto='.2f', height=400
     )
-    st.plotly_chart(fig_metrics, use_container_width=True)
+    st.plotly_chart(fig_metrics, width="stretch")
 
     col_s1, col_s2 = st.columns([1, 1])
 
@@ -188,7 +188,7 @@ with tab_stats:
             title="What makes a hit?", color="Importance", color_continuous_scale="Viridis",
             height=400
         )
-        st.plotly_chart(fig_imp, use_container_width=True)
+        st.plotly_chart(fig_imp, width="stretch")
 
     with col_s2:
         st.markdown("### ⚙️ Architecture Details")
