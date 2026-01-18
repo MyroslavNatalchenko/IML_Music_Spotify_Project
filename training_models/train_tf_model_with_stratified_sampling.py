@@ -11,9 +11,19 @@ def header(title):
 
 def load_data(file_path, target_col='popularity'):
     df = pd.read_csv(file_path)
-    X = df.drop(columns=[target_col]).astype('float32')
-    y = df[target_col].astype('float32') / 100.0
-    return train_test_split(X, y, test_size=0.2, random_state=42)
+
+    bins = [-1, 0, 20, 40, 60, 80, 100]
+    labels = [0, 1, 2, 3, 4, 5]
+    df['strata'] = pd.cut(df[target_col], bins=bins, labels=labels)
+
+    df_zeros = df[df['strata'] == 0].sample(n=5000, random_state=42)
+    df_others = df[df['strata'] != 0]
+    df_balanced = pd.concat([df_zeros, df_others])
+
+    X = df_balanced.drop(columns=[target_col, 'strata']).astype('float32')
+    y = df_balanced[target_col].astype('float32') / 100.0
+
+    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=df_balanced['strata'])
 
 def build_model(hp, X_train_sample):
     normalizer = tf.keras.layers.Normalization(axis=-1)
@@ -38,33 +48,33 @@ def build_model(hp, X_train_sample):
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
-        loss='mse',
-        metrics=['mae']
+        loss=tf.keras.losses.Huber(),
+        metrics=['mae', 'mse']
     )
     return model
 
 def train_evaluate(X_train, X_test, y_train, y_test):
     header("HYPERPARAMETER TUNING (KERAS TUNER)")
 
-    import shutil
-    if os.path.exists('kt_dir'):
-        shutil.rmtree('kt_dir')
+    if os.path.exists('models/kt_dir'):
+        import shutil
+        shutil.rmtree('models/kt_dir')
 
     tuner = kt.Hyperband(
         lambda hp: build_model(hp, X_train),
         objective='val_loss',
-        max_epochs=15,
+        max_epochs=30,
         factor=3,
         hyperband_iterations=1,
         directory='models/kt_dir',
         project_name='music_popularity'
     )
 
-    stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+    stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
     tuner.search(
         np.array(X_train), np.array(y_train),
-        epochs=15,
+        epochs=30,
         validation_split=0.2,
         callbacks=[stop_early],
         batch_size=256,
@@ -72,16 +82,15 @@ def train_evaluate(X_train, X_test, y_train, y_test):
     )
 
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
     model = tuner.hypermodel.build(best_hps)
 
-    history = model.fit(
+    model.fit(
         np.array(X_train), np.array(y_train),
-        epochs=50,
-        batch_size=128,
+        epochs=100,
+        batch_size=256,
         validation_split=0.2,
         callbacks=[
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
         ],
         verbose=1
     )
@@ -98,12 +107,10 @@ def train_evaluate(X_train, X_test, y_train, y_test):
             print(f"Dropout Rate:    {best_hps.get(f'dropout_rate_{i}'):>10.4f}")
         print(f"Batch Norm:      {best_hps.get(f'batch_norm_{i}'):>10.4f}")
 
-    print(f"\nAll params raw: {best_hps.values}")
-
     header("TEST RESULTS")
     raw_predictions = model.predict(np.array(X_test))
-    y_test_original = y_test * 100.0
     predictions_original = raw_predictions * 100.0
+    y_test_original = y_test * 100.0
 
     rmse = np.sqrt(mean_squared_error(y_test_original, predictions_original))
     mae = mean_absolute_error(y_test_original, predictions_original)
@@ -118,7 +125,7 @@ def train_evaluate(X_train, X_test, y_train, y_test):
 def main():
     X_train, X_test, y_train, y_test = load_data('../models/train_data.csv')
     model = train_evaluate(X_train, X_test, y_train, y_test)
-    model.save('../models/tf_model.keras')
+    model.save('../models/tf_after_stratified_sampling_model.keras')
 
 if __name__ == "__main__":
     main()

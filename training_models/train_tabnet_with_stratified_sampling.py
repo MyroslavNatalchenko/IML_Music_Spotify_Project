@@ -2,27 +2,34 @@ import joblib
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+from sklearn.preprocessing import StandardScaler
 from tabnet_keras import TabNetRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.preprocessing import StandardScaler
-import os
 
 def header(title):
     print(f"\n{'=' * 60}\n{title.center(60)}\n{'=' * 60}")
 
 def load_data(file_path, target_col='popularity'):
     df = pd.read_csv(file_path)
-    X = df.drop(columns=[target_col]).astype('float32')
-    y = df[target_col].astype('float32') / 100.0
-    return train_test_split(X, y, test_size=0.2, random_state=42)
+
+    bins = [-1, 0, 20, 40, 60, 80, 100]
+    labels = [0, 1, 2, 3, 4, 5]
+    df['strata'] = pd.cut(df[target_col], bins=bins, labels=labels)
+
+    df_zeros = df[df['strata'] == 0].sample(n=5000, random_state=42)
+    df_others = df[df['strata'] != 0]
+    df_balanced = pd.concat([df_zeros, df_others])
+
+    X = df_balanced.drop(columns=[target_col, 'strata']).astype('float32')
+    y = df_balanced[target_col].astype('float32') / 100.0
+
+    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=df_balanced['strata'])
 
 def train_evaluate(X_train, X_test, y_train, y_test):
-    scaler = StandardScaler()
+    scaler = joblib.load("../models/tabnet_scaler.joblib")
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
-    joblib.dump(scaler, '../models/tabnet_scaler.joblib')
-    print("Scaler saved to ../models/tabnet_scaler.joblib")
 
     tabnet_params = {
         "decision_dim": 64,
@@ -42,15 +49,15 @@ def train_evaluate(X_train, X_test, y_train, y_test):
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.002)
 
     model.compile(
-        loss='mean_squared_error',
+        loss=tf.keras.losses.Huber(),
         optimizer=optimizer,
-        metrics=[tf.keras.metrics.RootMeanSquaredError(name='rmse')],
+        metrics=['mae', 'mse'],
         run_eagerly=True
     )
 
     stop_early = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss',
-        patience=20,
+        patience=10,
         restore_best_weights=True
     )
 
@@ -90,7 +97,7 @@ def train_evaluate(X_train, X_test, y_train, y_test):
 def main():
     X_train, X_test, y_train, y_test = load_data('../models/train_data.csv')
     model = train_evaluate(X_train, X_test, y_train, y_test)
-    model.save('../models/tabnet_model.keras')
+    model.save('../models/tabnet_after_stratified_sampling_model.keras')
 
 if __name__ == "__main__":
     main()

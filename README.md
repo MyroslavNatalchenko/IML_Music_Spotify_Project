@@ -124,6 +124,40 @@ liveness             | █                              0.0595
 instrumentalness     | █                              0.0473
 ```
 
+### Random Forest Results After Sample Weighting
+```
+============================================================
+                   HYPERPARAMETER TUNING                    
+============================================================
+Best Parameters: 
+- n_estimators: 500
+- min_samples_split: 10
+- min_samples_leaf: 4
+- max_features: log2
+- max_depth: None
+
+============================================================
+                        TEST RESULTS                        
+============================================================
+- RMSE (Root Mean Sq. Error):    20.9008
+- MAE  (Mean Absolute Error):    15.7033
+- R2   (R-Squared Score):         0.1148
+
+============================================================
+                 TOP 10 FEATURE IMPORTANCE                  
+============================================================
+instrumentalness     | ███                            0.1046
+loudness             | █                              0.0659
+duration_ms          | █                              0.0638
+danceability         | █                              0.0619
+acousticness         | █                              0.0575
+energy               | █                              0.0569
+valence              | █                              0.0488
+genre_pop            | █                              0.0468
+speechiness          | █                              0.0445
+tempo                | █                              0.0418
+```
+
 ### Tensorflow Model
 ```
 ============================================================
@@ -151,16 +185,58 @@ Batch Norm:          1.0000
 - R2   (R-Squared Score):         0.2560
 ```
 
+### Tensorflow Model After Stratified Sampling
+```
+============================================================
+               BEST HYPERPARAMETERS DETAILED                
+============================================================
+Learning Rate:     0.0005
+Num Layers:        1.0000
+
+	[Layer 1 INFORMATION]
+Units:              96.0000
+Dropout Enabled:     1.0000
+Dropout Rate:        0.2000
+Batch Norm:          1.0000
+
+============================================================
+                        TEST RESULTS                        
+============================================================
+644/644 ━━━━━━━━━━━━━━━━━━━━ 1s 1ms/step
+- RMSE (Root Mean Sq. Error):    17.0331
+- MAE  (Mean Absolute Error):    12.2528
+- R2   (R-Squared Score):         0.3076
+```
+
 ### XGBoost
 ```
 ============================================================
                     BEST HYPERPARAMETERS                    
 ============================================================
-- n_estimators: 504 
+- n_estimators: 999 
+- max_depth: 9 
+- learning_rate: 0.11556007659389379
+- subsample: 0.9810541206272365 
+- colsample_bytree: 0.8568252553587502
+
+============================================================
+                        TEST RESULTS                        
+============================================================
+- RMSE (Root Mean Sq. Error):    15.6779
+- MAE  (Mean Absolute Error):    10.4751
+- R2   (R-Squared Score):         0.5019
+```
+
+### XGBoost After Sample Weighting
+```
+============================================================
+                    BEST HYPERPARAMETERS                    
+============================================================
+- n_estimators: 999 
 - max_depth: 10 
-- learning_rate: 0.09247260686862264 
-- subsample: 0.886456400096244 
-- colsample_bytree: 0.9073751570616455
+- learning_rate: 0.2941035559166622
+- subsample: 0.9997921072409696
+- colsample_bytree: 0.7933905890703496
 
 ============================================================
                         TEST RESULTS                        
@@ -175,9 +251,9 @@ Batch Norm:          1.0000
 ============================================================
                         TEST RESULTS                        
 ============================================================
-- RMSE (Root Mean Sq. Error):    18.4580
-- MAE  (Mean Absolute Error):    13.1880
-- R2   (R-Squared Score):         0.3096
+- RMSE (Root Mean Sq. Error):    18.3855
+- MAE  (Mean Absolute Error):    13.2294
+- R2   (R-Squared Score):         0.3150
 
 {
     "decision_dim": 64,
@@ -191,10 +267,19 @@ Batch Norm:          1.0000
     "mask_type": "softmax",
     "lambda_sparse": 1e-4,
     "batch_size": 512,
-    "epochs": 50
+    "epochs": 150
 }
 ```
 
+### Tabnet Model After Stratified Sampling
+```
+============================================================
+                        TEST RESULTS                        
+============================================================
+- RMSE (Root Mean Sq. Error):    16.6083
+- MAE  (Mean Absolute Error):    11.6408
+- R2   (R-Squared Score):         0.3417
+```
 ---
 
 # Bug in TabNet_keras tensorflow library

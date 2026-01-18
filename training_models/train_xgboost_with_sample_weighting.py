@@ -3,9 +3,9 @@ import numpy as np
 import xgboost as xgb
 import optuna
 import joblib
-import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.utils.class_weight import compute_sample_weight
 
 def header(title):
     print(f"\n{'=' * 60}\n{title.center(60)}\n{'=' * 60}")
@@ -17,6 +17,8 @@ def load_data(file_path, target_col='popularity'):
     return train_test_split(X, y, test_size=0.2, random_state=42)
 
 def objective(trial, X_train, y_train, X_test, y_test):
+    weights = compute_sample_weight(class_weight='balanced', y=y_train)
+
     param = {
         'verbosity': 0,
         'objective': 'reg:squarederror',
@@ -32,6 +34,7 @@ def objective(trial, X_train, y_train, X_test, y_test):
 
     model.fit(
         X_train, y_train,
+        sample_weight=weights,
         eval_set=[(X_test, y_test)],
         verbose=False
     )
@@ -40,12 +43,11 @@ def objective(trial, X_train, y_train, X_test, y_test):
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     return rmse
 
-
 def train_evaluate(X_train, X_test, y_train, y_test):
     header("HYPERPARAMETER TUNING (OPTUNA)")
 
     study = optuna.create_study(direction='minimize')
-    study.optimize(lambda trial: objective(trial, X_train, y_train, X_test, y_test), n_trials=50)
+    study.optimize(lambda trial: objective(trial, X_train, y_train, X_test, y_test), n_trials=300)
 
     best_params = study.best_params
 
@@ -55,8 +57,10 @@ def train_evaluate(X_train, X_test, y_train, y_test):
         n_jobs=-1
     )
 
+    weights = compute_sample_weight(class_weight='balanced', y=y_train)
     final_model.fit(
         X_train, y_train,
+        sample_weight=weights,
         eval_set=[(X_test, y_test)],
         verbose=False
     )
@@ -80,7 +84,7 @@ def train_evaluate(X_train, X_test, y_train, y_test):
 def main():
     X_train, X_test, y_train, y_test = load_data('../models/train_data.csv')
     model = train_evaluate(X_train, X_test, y_train, y_test)
-    joblib.dump(model, '../models/xgb_model.joblib')
+    joblib.dump(model, '../models/xgb_after_sample_weighting_model')
 
 if __name__ == "__main__":
     main()

@@ -9,19 +9,35 @@ st.set_page_config(page_title="Hit Predictor", layout="wide", page_icon="🎵")
 MODEL_STATS = {
     "Random Forest": {
         "RMSE": 15.1706, "MAE": 10.3634, "R2": 0.5336,
-        "Params": {"n_estimators": 300, "min_samples_split": 2, "max_features": "None", "max_depth": "None"}
+        "Params": {"n_estimators": 300, "min_samples_split": 2, "min_samples_leaf": 2, "max_features": "None"}
+    },
+    "Random Forest (Weighted)": {
+        "RMSE": 20.9008, "MAE": 15.7033, "R2": 0.1148,
+        "Params": {"n_estimators": 500, "min_samples_split": 10, "min_samples_leaf": 4, "max_features": "log2"}
     },
     "XGBoost": {
+        "RMSE": 15.6779, "MAE": 10.4751, "R2": 0.5019,
+        "Params": {"n_estimators": 999, "max_depth": 9, "learning_rate": 0.116, "subsample": 0.98}
+    },
+    "XGBoost (Weighted)": {
         "RMSE": 16.0190, "MAE": 10.9180, "R2": 0.4800,
-        "Params": {"n_estimators": 504, "max_depth": 10, "learning_rate": 0.092, "subsample": 0.88}
+        "Params": {"n_estimators": 999, "max_depth": 10, "learning_rate": 0.294, "subsample": 0.99}
     },
     "TensorFlow": {
         "RMSE": 19.1617, "MAE": 14.1879, "R2": 0.2560,
-        "Params": {"layers": 2, "layer_1": "64 units", "layer_2": "96 units (dropout 0.1)", "lr": 0.0005}
+        "Params": {"layers": 2, "l1": "64 units", "l2": "96 units (dropout 0.1)", "lr": 0.0005}
+    },
+    "TensorFlow (Stratified)": {
+        "RMSE": 17.0331, "MAE": 12.2528, "R2": 0.3076,
+        "Params": {"layers": 1, "l1": "96 units (dropout 0.2)", "lr": 0.0005}
     },
     "TabNet": {
-        "RMSE": 18.4580, "MAE": 13.1880, "R2": 0.3096,
+        "RMSE": 18.3855, "MAE": 13.2294, "R2": 0.3150,
         "Params": {"decision_dim": 64, "n_steps": 8, "mask_type": "softmax", "batch_size": 512}
+    },
+    "TabNet (Stratified)": {
+        "RMSE": 16.6083, "MAE": 11.6408, "R2": 0.3417,
+        "Params": {"decision_dim": 64, "n_steps": 8, "mask_type": "softmax", "stratified": True}
     }
 }
 
@@ -60,47 +76,53 @@ if not data:
 genres_list = data["lists"]["genres"]
 available_models = data["models"]
 
+try:
+    dance_index = genres_list.index("dance")
+except ValueError:
+    dance_index = 0
+
 tab_predict, tab_stats = st.tabs(["🔮 Predictor", "📈 Model Statistics"])
 
-with tab_predict:
+with ((((tab_predict)))):
     with st.container(border=True):
-        st.markdown("#### 🎛️ Track Configuration")
+        st.markdown("#### 🎛 Track Configuration")
 
         c1, c2, c3, c4 = st.columns([2, 1.2, 0.8, 1])
         with c1:
-            genre = st.selectbox("Genre", options=genres_list)
+            genre = st.selectbox("Genre", options=genres_list, index=dance_index)
         with c2:
-            duration_s = st.number_input("Duration (s)", value=200, step=10)
+            duration_s = st.number_input("Duration (s)", value=156, step=1)
             duration_ms = duration_s * 1000
         with c3:
             st.write("")
             st.write("")
             explicit = st.checkbox("Explicit", value=False)
         with c4:
-            key = st.selectbox("Key", range(12))
+            key = st.selectbox("Key", range(12), index=2)
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            tempo = st.number_input("BPM (Tempo)", value=120.0, step=1.0)
+            tempo = st.number_input("BPM (Tempo)", value=131.12, step=0.01)
         with c2:
-            mode = st.radio("Mode", [1, 0], format_func=lambda x: "Major" if x == 1 else "Minor", horizontal=True)
+            mode = st.radio("Mode", [1, 0], format_func=lambda x: "Major" if x == 1 else "Minor", horizontal=True,
+                            index=0)
         with c3:
             time_signature = st.selectbox("Time Sig", [3, 4, 5, 6, 7], index=1)
 
-        with st.expander("🎚️ Fine-tune Audio Features (Vibe & Mood)", expanded=False):
+        with st.expander("🎚 Fine-tune Audio Features (Vibe & Mood)", expanded=True):
             ac1, ac2, ac3, ac4 = st.columns(4)
             with ac1:
-                danceability = st.slider("💃 Dance", 0.0, 1.0, 0.65)
-                energy = st.slider("⚡ Energy", 0.0, 1.0, 0.70)
+                danceability = st.slider("💃 Dance", 0.0, 1.0, 0.71)
+                energy = st.slider("⚡️ Energy", 0.0, 1.0, 0.47)
             with ac2:
-                loudness = st.slider("🔊 Loudness", -60.0, 0.0, -5.0)
-                speechiness = st.slider("🗣 Speech", 0.0, 1.0, 0.05)
+                loudness = st.slider("🔊 Loudness", -60.0, 0.0, -7.38)
+                speechiness = st.slider("🗣 Speech", 0.0, 1.0, 0.09)
             with ac3:
-                valence = st.slider("🌞 Positivity", 0.0, 1.0, 0.5)
-                acousticness = st.slider("🎸 Acoustic", 0.0, 1.0, 0.1)
+                valence = st.slider("🌞 Positivity", 0.0, 1.0, 0.24)
+                acousticness = st.slider("🎸 Acoustic", 0.0, 1.0, 0.11)
             with ac4:
-                liveness = st.slider("🎤 Live", 0.0, 1.0, 0.1)
-                instrumentalness = st.slider("🎹 Instr", 0.0, 1.0, 0.0)
+                liveness = st.slider("🎤 Live", 0.0, 1.0, 0.27)
+                instrumentalness = st.slider("🎹 Instr", 0.0, 1.0, 0.00)
 
     col_btn, col_res = st.columns([1, 4], gap="large")
 
@@ -149,17 +171,23 @@ with tab_predict:
                         if results:
                             sorted_res = sorted(results.items(), key=lambda x: x[1] or 0, reverse=True)
 
-                            cols = st.columns(len(sorted_res))
-                            for i, (m_name, score) in enumerate(sorted_res):
-                                with cols[i]:
-                                    with st.container(border=True):
-                                        clean_name = m_name.replace("_model", "").replace("_", " ").title()
+                            chunk_size = 4
+                            for i in range(0, len(sorted_res), chunk_size):
+                                chunk = sorted_res[i:i + chunk_size]
+                                cols = st.columns(chunk_size)
 
-                                        if score is not None:
-                                            st.metric(f"{clean_name} Score", f"{score:.1f}")
-                                            st.progress(score / 100)
-                                        else:
-                                            st.error("Failed")
+                                for j, (m_name, score) in enumerate(chunk):
+                                    with cols[j]:
+                                        with st.container(border=True):
+                                            clean_name = m_name.replace("_model", "").replace("_", " ").title()
+                                            clean_name = clean_name.replace("Rf", "Random Forest"
+                                                                            ).replace("Tf", "TensorFlow"
+                                                                                      ).replace("Xgb", "XGBoost")
+                                            if score is not None:
+                                                st.metric(f"{clean_name}", f"{score:.1f}")
+                                                st.progress(score / 100)
+                                            else:
+                                                st.error("Failed")
                     except Exception as e:
                         st.error(f"Connection Failed: {e}")
         else:
@@ -175,7 +203,7 @@ with tab_stats:
     fig_metrics = px.bar(
         metrics_melted, x="Model", y="Value", color="Metric", barmode="group",
         title="Metric Comparison (RMSE/MAE: Lower is better, R2: Higher is better)",
-        text_auto='.2f', height=400
+        text_auto='.2f', height=500
     )
     st.plotly_chart(fig_metrics, width="stretch")
 
@@ -194,5 +222,5 @@ with tab_stats:
         st.markdown("### ⚙️ Architecture Details")
         for model_name, data in MODEL_STATS.items():
             with st.expander(f"🔹 {model_name} Params"):
-                st.write(f"**Best R2:** {data['R2']:.3f}")
+                st.write(f"**Best R2:** {data['R2']:.4f}")
                 st.json(data["Params"])
